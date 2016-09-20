@@ -23,7 +23,7 @@ Django
 ------
 Here is an example for integrating this with Django, using Vault to get
 database credentials. When using PostgreSQL you will also want to look at
-`django-postgresql-setrole <https://github.com/jdelic/django-postgresql-setrole`__.
+`django-postgresql-setrole <https://github.com/jdelic/django-postgresql-setrole>`__.
 
 .. code-block:: python
 
