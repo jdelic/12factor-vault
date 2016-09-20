@@ -10,21 +10,21 @@ Installation
 ------------
 This has been uploaded to the Cheeseshop aka Pypi as
 `12factor-vault <https://pypi.python.org/pypi/12factor-vault>`__. So just add
-`12factor-vault` to your `requirements.txt` or `setup.py`.
+``12factor-vault`` to your ``requirements.txt`` or ``setup.py``.
 
-`pip install 12factor-vault` also works.
+``pip install 12factor-vault`` also works.
 
 
 General usage
 -------------
-Basically after configuring a `BaseVaultAuthenticator` instance which creates
+Basically after configuring a ``BaseVaultAuthenticator`` instance which creates
 authenticated Vault clients (relying on the excellent
 `hvac library <https://github.com/ianunruh/hvac>`__) you can use that to create
-`VaultCredentialProvider` instances which manage leases and renew credentials
+``VaultCredentialProvider`` instances which manage leases and renew credentials
 as needed (e.g. database credentials managed by one of Vault's *secrets*
 backends).
 
-`VaultAuth12Factor` is a subclass of `BaseVaultAuthenticator` that reads
+``VaultAuth12Factor`` is a subclass of ``BaseVaultAuthenticator`` that reads
 all necessary configuration from environment variables.
 
 
