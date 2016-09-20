@@ -6,6 +6,15 @@ This project provides helper classes for integrating
 Django.
 
 
+Installation
+------------
+This has been uploaded to the Cheeseshop aka Pypi as
+`12factor-vault <https://pypi.python.org/pypi/12factor-vault>`__. So just add
+`12factor-vault` to your `requirements.txt` or `setup.py`.
+
+`pip install 12factor-vault` also works.
+
+
 General usage
 -------------
 Basically after configuring a `BaseVaultAuthenticator` instance which creates
