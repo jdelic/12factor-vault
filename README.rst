@@ -30,7 +30,8 @@ database credentials. When using PostgreSQL you will also want to look at
     # in settings.py
     VAULT = VaultAuth12Factor.fromenv()
     CREDS = VaultCredentialProvider("https://vault.local:8200/", VAULT,
-                                    os.getenv("VAULT_DATABASE_PATH", "db-mydatabase/creds/fullaccess"),
+                                    os.getenv("VAULT_DATABASE_PATH",
+                                    "db-mydatabase/creds/fullaccess"),
                                     os.getenv("VAULT_CA", None), True,
                                     DEBUG)
 
@@ -42,7 +43,8 @@ database credentials. When using PostgreSQL you will also want to look at
             'PASSWORD': CREDS.password,
             'HOST': '127.0.0.1',
             'PORT': '5432',
-            'SET_ROLE': os.getenv("DATABASE_PARENTROLE", "mydatabaseowner")  # requires django-postgresql-setrole
+            # requires django-postgresql-setrole
+            'SET_ROLE': os.getenv("DATABASE_PARENTROLE", "mydatabaseowner")
         }
     }
 
