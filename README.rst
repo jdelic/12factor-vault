@@ -15,6 +15,31 @@ This has been uploaded to the Cheeseshop aka Pypi as
 ``pip install 12factor-vault`` also works.
 
 
+Environment variables
++++++++++++++++++++++
+===========================  =========================  ==================================
+Environment Variable         Vault auth backend         Direct configuration static method
+                                                        on BaseVaultAuthenticator
+===========================  =========================  ==================================
+VAULT_TOKEN                  Token authentication       token(str)
+VAULT_APPID, VAULT_USERID    App-id authenticaion       app_id(str, str)
+VAULT_SSLCERT, VAULT_SSLKEY  SSL Client authentication  ssl_client_cert(str, str)
+===========================  =========================  ==================================
+
+The Django example below uses the following environment variables:
+
+===========================  ==================================================
+Environment Variable         Description
+===========================  ==================================================
+VAULT_DATABASE_PATH          The path to Vault's credential-issuing backend
+VAULT_CA                     The CA issuing Vault's HTTPS SSL certificate (for
+                             CA pinning)
+DATABASE_NAME                Name of the database to connect to on the database
+                             server.
+DATABASE_OWNERROLE           The PostgreSQL role to use for ``SET ROLE`` after
+                             connecting to the database
+===========================  ==================================================
+
 General usage
 -------------
 Basically after configuring a ``BaseVaultAuthenticator`` instance which creates
@@ -53,7 +78,7 @@ database credentials. When using PostgreSQL you will also want to look at
             'HOST': '127.0.0.1',
             'PORT': '5432',
             # requires django-postgresql-setrole
-            'SET_ROLE': os.getenv("DATABASE_PARENTROLE", "mydatabaseowner")
+            'SET_ROLE': os.getenv("DATABASE_OWNERROLE", "mydatabaseowner")
         }
     }
 
