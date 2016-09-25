@@ -13,14 +13,14 @@ except IOError:
 
 setup(
     name="12factor-vault",
-    version="0.1.1",
+    version="0.1.3",
     packages=["vault12factor"],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "Intended Audience :: System Administrators",
         "Programming Language :: Python :: 3 :: Only",
-        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+        "License :: OSI Approved :: BSD License",
         "Operating System :: POSIX",
     ],
     url="https://github.com/jdelic/12factor-vault/",
