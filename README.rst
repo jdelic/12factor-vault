@@ -5,6 +5,9 @@ This project provides helper classes for integrating
 `Hashicorp Vault <https://vaultproject.io/>`__ with your Python projects and
 Django.
 
+**Please note that this is still under active development and APIs are subject
+to change.**
+
 
 Installation
 ------------
