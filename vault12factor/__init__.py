@@ -238,7 +238,7 @@ class VaultCredentialProvider:
         return self._get_or_update("password")
 
 
-_operror_types = ()
+_operror_types = ()  # type: Union[Tuple[type], Tuple]
 try:
     import psycopg2
 except ImportError:
@@ -261,8 +261,8 @@ else:
     _operror_types += (MySQLdb.OperationalError,)
 
 
-def monkeypatch_django():
-    def ensure_connection_with_retries(self: django_db_base.BaseDatabaseWrapper):
+def monkeypatch_django() -> None:
+    def ensure_connection_with_retries(self: django_db_base.BaseDatabaseWrapper) -> None:
         if self.connection is None:
             with self.wrap_database_errors:
                 try:
@@ -294,10 +294,10 @@ class DjangoVaultDatabaseIntegration(AppConfig):
 
 
 class DjangoAutoRefreshDBCredentialsDict(dict):
-    def __init__(self, provider: VaultCredentialProvider, *args, **kwargs):
+    def __init__(self, provider: VaultCredentialProvider, *args: Any, **kwargs: Any) -> None:
         self._provider = provider
         super().__init__(*args, **kwargs)
 
-    def refresh_credentials(self):
+    def refresh_credentials(self) -> None:
         self["USER"] = self._provider.username
         self["PASSWORD"] = self._provider.password
