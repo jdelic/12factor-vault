@@ -6,10 +6,12 @@ from typing import Dict, Tuple, Union, Any, TypeVar, Type
 
 import hvac
 import pytz
+from django.apps.config import AppConfig
 from requests.exceptions import RequestException
-
+from django.db.backends.base import base as django_db_base
 
 _log = logging.getLogger(__name__)
+default_app_config = 'vault12factor.DjangoVaultDatabaseIntegration'
 
 
 class VaultCredentialProviderException(Exception):
@@ -160,7 +162,7 @@ class VaultCredentialProvider:
                                         DEBUG)
 
         DATABASES = {
-            'default': {
+            'default': DjangoAutoRefreshDBCredentialsDict(CREDS, {
                 'ENGINE': 'django.db.backends.postgresql',
                 'NAME': os.getenv("DATABASE_NAME", "mydatabase"),
                 'USER': CREDS.username,
@@ -168,7 +170,7 @@ class VaultCredentialProvider:
                 'HOST': '127.0.0.1',
                 'PORT': '5432',
                 'SET_ROLE': os.getenv("DATABASE_PARENTROLE", "mydatabaseowner")  # requires django-postgresql-setrole
-            }
+            }),
         }
     """
     def __init__(self, vaulturl: str, vaultauth: VaultAuthentication, secretpath: str, pin_cacert: str=None,
@@ -212,8 +214,9 @@ class VaultCredentialProvider:
         self._leasetime = self._now()
         self._updatetime = self._leasetime + datetime.timedelta(seconds=int(result["lease_duration"]))
 
-        _log.debug("Loaded new Vault DB credentials for %s:\nlease_id=%s\nleasetime=%s\nduration=%s\n"
+        _log.debug("Loaded new Vault DB credentials from %s:\nlease_id=%s\nleasetime=%s\nduration=%s\n"
                    "username=%s\npassword=%s",
+                   self.secretpath,
                    self._lease_id, str(self._leasetime), result["lease_duration"], self._cache["username"],
                    self._cache["password"] if self.debug_output else "Password withheld, debug output is disabled")
 
@@ -233,3 +236,68 @@ class VaultCredentialProvider:
     @property
     def password(self) -> str:
         return self._get_or_update("password")
+
+
+_operror_types = ()
+try:
+    import psycopg2
+except ImportError:
+    pass
+else:
+    _operror_types += (psycopg2.OperationalError,)
+
+try:
+    import sqlite3
+except ImportError:
+    pass
+else:
+    _operror_types += (sqlite3.OperationalError,)
+
+try:
+    import MySQLdb
+except ImportError:
+    pass
+else:
+    _operror_types += (MySQLdb.OperationalError,)
+
+
+def monkeypatch_django():
+    def ensure_connection_with_retries(self: django_db_base.BaseDatabaseWrapper):
+        if self.connection is None:
+            with self.wrap_database_errors:
+                try:
+                    self.connect()
+                except Exception as e:
+                    if isinstance(e, _operror_types):
+                        if hasattr(self, "_12vv_retries"):
+                            if self._12vv_retries >= 1:
+                                _log.debug("Retrying with new credentials from Vault didn't help %s", str(e))
+                                raise
+                        else:
+                            _log.debug("Database connection failed. Refreshing credentials from Vault.")
+                            self.settings_dict.refresh_credentials()
+                            self._12vv_retries = 1
+                            self.ensure_connection()
+                    else:
+                        _log.debug("Database connection failed, but not due to a known error for vault12factor %s",
+                                   str(e))
+                        raise
+
+    django_db_base.BaseDatabaseWrapper.ensure_connection = ensure_connection_with_retries
+
+
+class DjangoVaultDatabaseIntegration(AppConfig):
+    name = "vault12factor"
+
+    def ready(self) -> None:
+        monkeypatch_django()
+
+
+class DjangoAutoRefreshDBCredentialsDict(dict):
+    def __init__(self, provider: VaultCredentialProvider, *args, **kwargs):
+        self._provider = provider
+        super().__init__(*args, **kwargs)
+
+    def refresh_credentials(self):
+        self["USER"] = self._provider.username
+        self["PASSWORD"] = self._provider.password

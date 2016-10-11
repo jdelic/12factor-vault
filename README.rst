@@ -58,6 +58,13 @@ all necessary configuration from environment variables.
 
 Django
 ------
+Integrating with Django requires a small monkeypatch that retries failed
+database connections after refreshing the database credentials from Vault. The
+``vault12factor`` Django App will install that patch automatically. You also
+have to wrap your database settings dict in a
+``DjangoAutoRefreshDBCredentialsDict`` instance that knows hot to refresh
+database credentials from Vault.
+
 Here is an example for integrating this with Django, using Vault to get
 database credentials. When using PostgreSQL you will also want to look at
 `django-postgresql-setrole <https://github.com/jdelic/django-postgresql-setrole>`__.
@@ -65,25 +72,44 @@ database credentials. When using PostgreSQL you will also want to look at
 .. code-block:: python
 
     # in settings.py
-    VAULT = VaultAuth12Factor.fromenv()
-    CREDS = VaultCredentialProvider("https://vault.local:8200/", VAULT,
-                                    os.getenv("VAULT_DATABASE_PATH",
-                                    "db-mydatabase/creds/fullaccess"),
-                                    os.getenv("VAULT_CA", None), True,
-                                    DEBUG)
+    from vault12factor import \
+        VaultCredentialProvider, \
+        VaultAuth12Factor, \
+        DjangoAutoRefreshDBCredentialsDict
 
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv("DATABASE_NAME", "mydatabase"),
-            'USER': CREDS.username,
-            'PASSWORD': CREDS.password,
-            'HOST': '127.0.0.1',
-            'PORT': '5432',
-            # requires django-postgresql-setrole
-            'SET_ROLE': os.getenv("DATABASE_OWNERROLE", "mydatabaseowner")
+    INSTALLED_APPS += ['vault12factor',]
+
+    if DEBUG and not VaultAuth12Factor.has_envconfig():
+        SECRET_KEY = "secretsekrit"  # FOR DEBUG ONLY!
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': 'authserver.sqlite3',
+            }
         }
-    }
+    else:
+        if DEBUG:
+            SECRET_KEY = "secretsekrit"  # FOR DEBUG ONLY!
+
+        VAULT = VaultAuth12Factor.fromenv()
+        CREDS = VaultCredentialProvider("https://vault.local:8200/", VAULT,
+                                        os.getenv("VAULT_DATABASE_PATH",
+                                        "db-mydatabase/creds/fullaccess"),
+                                        os.getenv("VAULT_CA", None), True,
+                                        DEBUG)
+
+        DATABASES = {
+            'default': DjangoAutoRefreshDBCredentialsDict(CREDS, {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': os.getenv("DATABASE_NAME", "mydatabase"),
+                'USER': CREDS.username,
+                'PASSWORD': CREDS.password,
+                'HOST': '127.0.0.1',
+                'PORT': '5432',
+                # requires django-postgresql-setrole
+                'SET_ROLE': os.getenv("DATABASE_OWNERROLE", "mydatabaseowner")
+            }),
+        }
 
 
 License
