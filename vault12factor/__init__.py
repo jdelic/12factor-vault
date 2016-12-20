@@ -293,7 +293,7 @@ class DjangoVaultDatabaseIntegration(AppConfig):
         if VaultAuth12Factor.has_envconfig():
             from django.conf import settings
             found = False
-            for k, db in settings.DATABASES:
+            for k, db in settings.DATABASES.items():
                 if isinstance(db, DjangoVaultDatabaseIntegration):
                     found = True
 
