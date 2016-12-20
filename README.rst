@@ -65,6 +65,13 @@ have to wrap your database settings dict in a
 ``DjangoAutoRefreshDBCredentialsDict`` instance that knows hot to refresh
 database credentials from Vault.
 
+``vault12factor`` will check if an instance of
+``DjangoAutoRefreshDBCredentialsDict`` is configured in ``settings.DATABASES``
+before monkey-patching Django. So if you want to use ``vault12factor`` but
+configure your databases in separate Django apps or other things that this code
+can't detect, you will want to call ``vault12factor.monkeypatch_django()``
+yourself.
+
 Here is an example for integrating this with Django, using Vault to get
 database credentials. When using PostgreSQL you will also want to look at
 `django-postgresql-setrole <https://github.com/jdelic/django-postgresql-setrole>`__.

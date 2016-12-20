@@ -291,7 +291,14 @@ class DjangoVaultDatabaseIntegration(AppConfig):
 
     def ready(self) -> None:
         if VaultAuth12Factor.has_envconfig():
-            monkeypatch_django()
+            from django.conf import settings
+            found = False
+            for k, db in settings.DATABASES:
+                if isinstance(db, DjangoVaultDatabaseIntegration):
+                    found = True
+
+            if found:
+                monkeypatch_django()
 
 
 class DjangoAutoRefreshDBCredentialsDict(dict):
