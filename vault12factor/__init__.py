@@ -290,7 +290,8 @@ class DjangoVaultDatabaseIntegration(AppConfig):
     name = "vault12factor"
 
     def ready(self) -> None:
-        monkeypatch_django()
+        if VaultAuth12Factor.has_envconfig():
+            monkeypatch_django()
 
 
 class DjangoAutoRefreshDBCredentialsDict(dict):
