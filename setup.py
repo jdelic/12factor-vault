@@ -13,7 +13,7 @@ except IOError:
 
 setup(
     name="12factor-vault",
-    version="0.1.8",
+    version="0.1.9",
     packages=["vault12factor"],
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -30,4 +30,8 @@ setup(
     maintainer_email="info@gopythongo.com",
     description="Helper classes to integrate Django and other projects with Vault",
     long_description=long_description,
+
+    install_requires=[
+        "hvac==0.2.17",
+    ],
 )
