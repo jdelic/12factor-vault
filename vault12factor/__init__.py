@@ -294,7 +294,7 @@ class DjangoVaultDatabaseIntegration(AppConfig):
             from django.conf import settings
             found = False
             for k, db in settings.DATABASES.items():
-                if isinstance(db, DjangoVaultDatabaseIntegration):
+                if isinstance(db, DjangoAutoRefreshDBCredentialsDict):
                     found = True
 
             if found:
