@@ -283,6 +283,7 @@ def monkeypatch_django() -> None:
                                    str(e))
                         raise
 
+    _log.debug("12factor-vault: monkeypatching BaseDatabaseWrapper")
     django_db_base.BaseDatabaseWrapper.ensure_connection = ensure_connection_with_retries
 
 
@@ -309,3 +310,9 @@ class DjangoAutoRefreshDBCredentialsDict(dict):
     def refresh_credentials(self) -> None:
         self["USER"] = self._provider.username
         self["PASSWORD"] = self._provider.password
+
+    def __str__(self) -> str:
+        return "DjangoAutoRefreshDBCredentialsDict(%s)" % super().__str__()
+
+    def __repr__(self) -> str:
+        return "DjangoAutoRefreshDBCredentialsDict(%s)" % super().__repr__()
