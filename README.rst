@@ -122,7 +122,7 @@ database credentials. When using PostgreSQL you will also want to look at
 License
 =======
 
-Copyright (c) 2016, Jonas Maurus
+Copyright (c) 2016-2017, Jonas Maurus
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

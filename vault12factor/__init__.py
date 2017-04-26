@@ -32,7 +32,7 @@ class VaultAuthentication:
         raise NotImplementedError("Subclasses of VaultAuthentication must implement authenticated_client")
 
 
-# This won't work until https://github.com/python/mypy/issues/1212 is fixed
+# TypeVar for the factory methods in BaseVaultAuthenticator
 T = TypeVar('T', bound='BaseVaultAuthenticator')
 
 
