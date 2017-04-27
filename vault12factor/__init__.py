@@ -274,6 +274,7 @@ def monkeypatch_django() -> None:
             self.connection = None
         else:
             if test:
+                self._12fv_retries = 0
                 test.close()
                 # connection.cursor creates a transaction on postgresql so we commit that transaction here
                 if hasattr(self.connection, "commit"):
