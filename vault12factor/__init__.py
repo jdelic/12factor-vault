@@ -7,6 +7,7 @@ from typing import Dict, Tuple, Union, Any, TypeVar, Type
 import hvac
 import pytz
 from django.apps.config import AppConfig
+from django.db import utils as django_db_utils
 from requests.exceptions import RequestException
 from django.db.backends.base import base as django_db_base
 
@@ -239,6 +240,7 @@ class VaultCredentialProvider:
 
 
 _operror_types = ()  # type: Union[Tuple[type], Tuple]
+_operror_types += (django_db_utils.OperationalError,)
 try:
     import psycopg2
 except ImportError:
@@ -263,20 +265,34 @@ else:
 
 def monkeypatch_django() -> None:
     def ensure_connection_with_retries(self: django_db_base.BaseDatabaseWrapper) -> None:
+        test = None
+        try:
+            if self.connection is not None:
+                test = self.connection.cursor()
+                test.execute("SELECT 1")
+        except Exception as e:
+            self.connection = None
+        else:
+            if test:
+                test.close()
+                # connection.cursor creates a transaction on postgresql so we commit that transaction here
+                if hasattr(self.connection, "commit"):
+                    self.connection.commit()
+
         if self.connection is None:
             with self.wrap_database_errors:
                 try:
                     self.connect()
                 except Exception as e:
                     if isinstance(e, _operror_types):
-                        if hasattr(self, "_12vv_retries"):
-                            if self._12vv_retries >= 1:
+                        if hasattr(self, "_12fv_retries"):
+                            if self._12fv_retries >= 1:
                                 _log.debug("Retrying with new credentials from Vault didn't help %s", str(e))
                                 raise
                         else:
                             _log.debug("Database connection failed. Refreshing credentials from Vault.")
                             self.settings_dict.refresh_credentials()
-                            self._12vv_retries = 1
+                            self._12fv_retries = 1
                             self.ensure_connection()
                     else:
                         _log.debug("Database connection failed, but not due to a known error for vault12factor %s",
