@@ -265,21 +265,6 @@ else:
 
 def monkeypatch_django() -> None:
     def ensure_connection_with_retries(self: django_db_base.BaseDatabaseWrapper) -> None:
-        test = None
-        try:
-            if self.connection is not None:
-                test = self.connection.cursor()
-                test.execute("SELECT 1")
-        except Exception as e:
-            self.connection = None
-        else:
-            if test:
-                self._12fv_retries = 0
-                test.close()
-                # connection.cursor creates a transaction on postgresql so we commit that transaction here
-                if hasattr(self.connection, "commit"):
-                    self.connection.commit()
-
         if self.connection is None:
             with self.wrap_database_errors:
                 try:
@@ -291,7 +276,7 @@ def monkeypatch_django() -> None:
                                 _log.debug("Retrying with new credentials from Vault didn't help %s", str(e))
                                 raise
                         else:
-                            _log.debug("Database connection failed. Refreshing credentials from Vault.")
+                            _log.debug("Database connection failed. Refreshing credentials from Vault")
                             self.settings_dict.refresh_credentials()
                             self._12fv_retries = 1
                             self.ensure_connection()
@@ -299,6 +284,9 @@ def monkeypatch_django() -> None:
                         _log.debug("Database connection failed, but not due to a known error for vault12factor %s",
                                    str(e))
                         raise
+                else:
+                    _log.debug("Credential refresh success")
+                    self._12fv_retries = 0
 
     _log.debug("12factor-vault: monkeypatching BaseDatabaseWrapper")
     django_db_base.BaseDatabaseWrapper.ensure_connection = ensure_connection_with_retries
