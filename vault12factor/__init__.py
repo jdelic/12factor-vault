@@ -265,6 +265,9 @@ else:
 
 def monkeypatch_django() -> None:
     def ensure_connection_with_retries(self: django_db_base.BaseDatabaseWrapper) -> None:
+        if self.connection is not None and self.connection.closed:
+            self.connection = None
+
         if self.connection is None:
             with self.wrap_database_errors:
                 try:
