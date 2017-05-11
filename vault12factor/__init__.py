@@ -276,10 +276,9 @@ def monkeypatch_django() -> None:
                     self.connect()
                 except Exception as e:
                     if isinstance(e, _operror_types):
-                        if hasattr(self, "_12fv_retries"):
-                            if self._12fv_retries >= 1:
-                                _log.debug("Retrying with new credentials from Vault didn't help %s", str(e))
-                                raise
+                        if hasattr(self, "_12fv_retries") and self._12fv_retries >= 1:
+                            _log.error("Retrying with new credentials from Vault didn't help %s", str(e))
+                            raise
                         else:
                             _log.info("Database connection failed. Refreshing credentials from Vault")
                             self.settings_dict.refresh_credentials()
