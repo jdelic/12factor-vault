@@ -266,11 +266,13 @@ else:
 def monkeypatch_django() -> None:
     def ensure_connection_with_retries(self: django_db_base.BaseDatabaseWrapper) -> None:
         if self.connection is not None and self.connection.closed:
+            _log.debug("failed connection detected")
             self.connection = None
 
         if self.connection is None:
             with self.wrap_database_errors:
                 try:
+                    _log.debug("trying reconnect")
                     self.connect()
                 except Exception as e:
                     if isinstance(e, _operror_types):
@@ -279,7 +281,7 @@ def monkeypatch_django() -> None:
                                 _log.debug("Retrying with new credentials from Vault didn't help %s", str(e))
                                 raise
                         else:
-                            _log.debug("Database connection failed. Refreshing credentials from Vault")
+                            _log.info("Database connection failed. Refreshing credentials from Vault")
                             self.settings_dict.refresh_credentials()
                             self._12fv_retries = 1
                             self.ensure_connection()
