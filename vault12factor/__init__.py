@@ -272,7 +272,6 @@ def monkeypatch_django() -> None:
         if self.connection is None:
             with self.wrap_database_errors:
                 try:
-                    _log.debug("trying reconnect")
                     self.connect()
                 except Exception as e:
                     if isinstance(e, _operror_types):
@@ -289,7 +288,6 @@ def monkeypatch_django() -> None:
                                    str(e))
                         raise
                 else:
-                    _log.debug("Credential refresh success")
                     self._12fv_retries = 0
 
     _log.debug("12factor-vault: monkeypatching BaseDatabaseWrapper")
