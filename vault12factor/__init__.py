@@ -55,6 +55,13 @@ class BaseVaultAuthenticator(VaultAuthentication):
         return i
 
     @classmethod
+    def approle(cls: Type[T], role_id: str, secret_id: str) -> T:
+        i = cls()
+        i.credentials(role_id, secret_id)
+        i.authtype = "approle"
+        return i
+
+    @classmethod
     def ssl_client_cert(cls: Type[T], certfile: str, keyfile: str) -> T:
         if not os.path.isfile(certfile) or not os.access(certfile, os.R_OK):
             raise VaultCredentialProviderException("File not found or not readable: %s" % certfile)
@@ -80,6 +87,9 @@ class BaseVaultAuthenticator(VaultAuthentication):
         elif self.authtype == "app-id":
             cl = hvac.Client(*args, **kwargs)
             cl.auth_app_id(*self.credentials)
+        elif self.authtype == "approle":
+            cl = hvac.Client(*args, **kwargs)
+            cl.auth_approle(*self.credentials)
         elif self.authtype == "ssl":
             cl = hvac.Client(cert=self.credentials, *args, **kwargs)
             cl.auth_tls()
@@ -96,13 +106,14 @@ class VaultAuth12Factor(BaseVaultAuthenticator):
     """
     This class configures a Vault client instance from environment variables. The environment variables supported are:
 
-    ===========================  =========================  ==================================
-    Environment Variable         Vault auth backend         Direct configuration static method
-    ===========================  =========================  ==================================
-    VAULT_TOKEN                  Token authentication       token(str)
-    VAULT_APPID, VAULT_USERID    App-id authenticaion       app_id(str, str)
-    VAULT_SSLCERT, VAULT_SSLKEY  SSL Client authentication  ssl_client_cert(str, str)
-    ===========================  =========================  ==================================
+    ============================  =========================  ==================================
+    Environment Variable          Vault auth backend         Direct configuration static method
+    ============================  =========================  ==================================
+    VAULT_TOKEN                   Token authentication       token(str)
+    VAULT_APPID, VAULT_USERID     App-id authenticaion       app_id(str, str)
+    VAULT_ROLEID, VAULT_SECRETID  Approle authentication     approle(str, str)
+    VAULT_SSLCERT, VAULT_SSLKEY   SSL Client authentication  ssl_client_cert(str, str)
+    ============================  =========================  ==================================
 
     It can also be configured directly by calling one of the direct configuration methods.
     """
@@ -132,6 +143,8 @@ class VaultAuth12Factor(BaseVaultAuthenticator):
             i = VaultAuth12Factor.token(os.getenv("VAULT_TOKEN"))
         elif os.getenv("VAULT_APPID", None) and os.getenv("VAULT_USERID", None):
             i = VaultAuth12Factor.app_id(os.getenv("VAULT_APPID"), os.getenv("VAULT_USERID"))
+        elif os.getenv("VAULT_ROLEID", None) and os.getenv("VAULT_SECRETID", None):
+            i = VaultAuth12Factor.approle(os.getenv("VAULT_ROLEID"), os.getenv("VAULT_SECRETID"))
         elif os.getenv("VAULT_SSLCERT", None) and os.getenv("VAULT_SSLKEY", None):
             i = VaultAuth12Factor.ssl_client_cert(os.getenv("VAULT_SSLCERT"), os.getenv("VAULT_SSLKEY"))
 
