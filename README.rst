@@ -29,6 +29,9 @@ VAULT_APPID, VAULT_USERID    App-id authenticaion       app_id(str, str)
 VAULT_SSLCERT, VAULT_SSLKEY  SSL Client authentication  ssl_client_cert(str, str)
 ===========================  =========================  ==================================
 
+Approle authentication will be easily added once the fix in `hvac#115
+<https://github.com/ianunruh/hvac/pull/115>`__ has been released.
+
 The Django example below uses the following environment variables:
 
 ===========================  ==================================================
