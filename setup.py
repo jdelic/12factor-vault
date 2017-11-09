@@ -32,6 +32,6 @@ setup(
     long_description=long_description,
 
     install_requires=[
-        "hvac==0.2.17",
+        "hvac==0.2.18",
     ],
 )
