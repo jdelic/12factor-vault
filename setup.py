@@ -32,6 +32,6 @@ setup(
     long_description=long_description,
 
     install_requires=[
-        "hvac==0.3.0",
+        "hvac>=0.3.0",  # require at least 0.3.0 because it supports approle authentication
     ],
 )
