@@ -44,6 +44,8 @@ class BaseVaultAuthenticator(VaultAuthentication):
     def __init__(self) -> None:
         self.credentials = None  # type: Union[str, Tuple[str, str]]
         self.authtype = None  # type: str
+        self.authmount = None  # type: str
+        self.use_token = True
         self.unwrap_response = False
         super().__init__()
 
@@ -55,10 +57,12 @@ class BaseVaultAuthenticator(VaultAuthentication):
         return i
 
     @classmethod
-    def approle(cls: Type[T], role_id: str, secret_id: str) -> T:
+    def approle(cls: Type[T], role_id: str, secret_id: str=None, mountpoint: str="approle", use_token: bool=True) -> T:
         i = cls()
         i.credentials(role_id, secret_id)
+        i.authmount = mountpoint
         i.authtype = "approle"
+        i.use_token = use_token
         return i
 
     @classmethod
@@ -89,7 +93,7 @@ class BaseVaultAuthenticator(VaultAuthentication):
             cl.auth_app_id(*self.credentials)
         elif self.authtype == "approle":
             cl = hvac.Client(*args, **kwargs)
-            cl.auth_approle(*self.credentials)
+            cl.auth_approle(*self.credentials, mount_point=self.authmount, use_token=self.use_token)
         elif self.authtype == "ssl":
             cl = hvac.Client(cert=self.credentials, *args, **kwargs)
             cl.auth_tls()
@@ -111,7 +115,7 @@ class VaultAuth12Factor(BaseVaultAuthenticator):
     ============================  =========================  ==================================
     VAULT_TOKEN                   Token authentication       token(str)
     VAULT_APPID, VAULT_USERID     App-id authenticaion       app_id(str, str)
-    VAULT_ROLEID, VAULT_SECRETID  Approle authentication     approle(str, str)
+    VAULT_ROLEID, VAULT_SECRETID  Approle authentication     approle(str, str, str, bool)
     VAULT_SSLCERT, VAULT_SSLKEY   SSL Client authentication  ssl_client_cert(str, str)
     ============================  =========================  ==================================
 
@@ -128,7 +132,8 @@ class VaultAuth12Factor(BaseVaultAuthenticator):
         """
         if (os.getenv("VAULT_TOKEN", None) or
                 (os.getenv("VAULT_APPID", None) and os.getenv("VAULT_USERID", None)) or
-                (os.getenv("VAULT_SSLCERT", None) and os.getenv("VAULT_SSLKEY", None))):
+                (os.getenv("VAULT_SSLCERT", None) and os.getenv("VAULT_SSLKEY", None)) or
+                (os.getenv("VAULT_ROLEID", None) and os.getenv("VAULT_SECRETID", None))):
             return True
 
         return False
