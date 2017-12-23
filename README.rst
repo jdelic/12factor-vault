@@ -20,14 +20,18 @@ This has been uploaded to the Cheeseshop aka Pypi as
 
 Environment variables
 +++++++++++++++++++++
-===========================  =========================  ==================================
-Environment Variable         Vault auth backend         Direct configuration static method
-                                                        on BaseVaultAuthenticator
-===========================  =========================  ==================================
+===========================  =========================  =======================
+Environment Variable         Vault auth backend         Direct configuration
+                                                        static method on
+                                                        BaseVaultAuthenticator
+===========================  =========================  =======================
 VAULT_TOKEN                  Token authentication       token(str)
 VAULT_APPID, VAULT_USERID    App-id authenticaion       app_id(str, str)
-VAULT_SSLCERT, VAULT_SSLKEY  SSL Client authentication  ssl_client_cert(str, str)
-===========================  =========================  ==================================
+VAULT_ROLEID, VAULT_SECRETID Approle authentication     approle(str, str, str,
+                                                        bool)
+VAULT_SSLCERT, VAULT_SSLKEY  SSL Client authentication  ssl_client_cert(str,
+                                                        str)
+===========================  =========================  =======================
 
 Approle authentication will be easily added once the fix in `hvac#115
 <https://github.com/ianunruh/hvac/pull/115>`__ has been released.
