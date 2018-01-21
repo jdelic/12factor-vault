@@ -7,12 +7,12 @@ from typing import Dict, Tuple, Union, Any, TypeVar, Type
 import hvac
 import pytz
 from django.apps.config import AppConfig
-from django.db import utils as django_db_utils
+from django.db.backends.base.base import BaseDatabaseWrapper
 from requests.exceptions import RequestException
-from django.db.backends.base import base as django_db_base
+
 
 _log = logging.getLogger(__name__)
-default_app_config = 'vault12factor.DjangoVaultDatabaseIntegration'
+default_app_config = 'vault12factor.DjangoIntegration'
 
 
 class VaultCredentialProviderException(Exception):
@@ -257,76 +257,6 @@ class VaultCredentialProvider:
         return self._get_or_update("password")
 
 
-_operror_types = ()  # type: Union[Tuple[type], Tuple]
-_operror_types += (django_db_utils.OperationalError,)
-try:
-    import psycopg2
-except ImportError:
-    pass
-else:
-    _operror_types += (psycopg2.OperationalError,)
-
-try:
-    import sqlite3
-except ImportError:
-    pass
-else:
-    _operror_types += (sqlite3.OperationalError,)
-
-try:
-    import MySQLdb
-except ImportError:
-    pass
-else:
-    _operror_types += (MySQLdb.OperationalError,)
-
-
-def monkeypatch_django() -> None:
-    def ensure_connection_with_retries(self: django_db_base.BaseDatabaseWrapper) -> None:
-        if self.connection is not None and self.connection.closed:
-            _log.debug("failed connection detected")
-            self.connection = None
-
-        if self.connection is None:
-            with self.wrap_database_errors:
-                try:
-                    self.connect()
-                except Exception as e:
-                    if isinstance(e, _operror_types):
-                        if hasattr(self, "_12fv_retries") and self._12fv_retries >= 1:
-                            _log.error("Retrying with new credentials from Vault didn't help %s", str(e))
-                            raise
-                        else:
-                            _log.info("Database connection failed. Refreshing credentials from Vault")
-                            self.settings_dict.refresh_credentials()
-                            self._12fv_retries = 1
-                            self.ensure_connection()
-                    else:
-                        _log.debug("Database connection failed, but not due to a known error for vault12factor %s",
-                                   str(e))
-                        raise
-                else:
-                    self._12fv_retries = 0
-
-    _log.debug("12factor-vault: monkeypatching BaseDatabaseWrapper")
-    django_db_base.BaseDatabaseWrapper.ensure_connection = ensure_connection_with_retries
-
-
-class DjangoVaultDatabaseIntegration(AppConfig):
-    name = "vault12factor"
-
-    def ready(self) -> None:
-        if VaultAuth12Factor.has_envconfig():
-            from django.conf import settings
-            found = False
-            for k, db in settings.DATABASES.items():
-                if isinstance(db, DjangoAutoRefreshDBCredentialsDict):
-                    found = True
-
-            if found:
-                monkeypatch_django()
-
-
 class DjangoAutoRefreshDBCredentialsDict(dict):
     def __init__(self, provider: VaultCredentialProvider, *args: Any, **kwargs: Any) -> None:
         self._provider = provider
@@ -341,3 +271,18 @@ class DjangoAutoRefreshDBCredentialsDict(dict):
 
     def __repr__(self) -> str:
         return "DjangoAutoRefreshDBCredentialsDict(%s)" % super().__repr__()
+
+
+def refresh_credentials_hook(connection: BaseDatabaseWrapper) -> None:
+    # settings_dict will be the dictionary from the database connection
+    # so this supports multiple databases in settings.py
+    if isinstance(connection.settings_dict, DjangoAutoRefreshDBCredentialsDict):
+        connection.settings_dict.refresh_credentials()
+
+
+class DjangoIntegration(AppConfig):
+    name = "vault12factor"
+
+    def ready(self) -> None:
+        import django_dbconn_retry
+        django_dbconn_retry.add_pre_reconnect_hook()

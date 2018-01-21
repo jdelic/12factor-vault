@@ -33,5 +33,6 @@ setup(
 
     install_requires=[
         "hvac>=0.3.0",  # require at least 0.3.0 because it supports approle authentication
+        "django_dbconn_retry",
     ],
 )

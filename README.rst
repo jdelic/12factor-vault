@@ -83,12 +83,12 @@ database credentials. When using PostgreSQL you will also want to look at
 .. code-block:: python
 
     # in settings.py
+    INSTALLED_APPS += ['django-dbconn-retry', 'vault12factor',]
+
     from vault12factor import \
         VaultCredentialProvider, \
         VaultAuth12Factor, \
         DjangoAutoRefreshDBCredentialsDict
-
-    INSTALLED_APPS += ['vault12factor',]
 
     if DEBUG and not VaultAuth12Factor.has_envconfig():
         SECRET_KEY = "secretsekrit"  # FOR DEBUG ONLY!
