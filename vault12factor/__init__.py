@@ -285,4 +285,4 @@ class DjangoIntegration(AppConfig):
 
     def ready(self) -> None:
         import django_dbconn_retry
-        django_dbconn_retry.add_pre_reconnect_hook()
+        django_dbconn_retry.add_pre_reconnect_hook(refresh_credentials_hook)
