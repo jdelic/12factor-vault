@@ -273,7 +273,7 @@ class DjangoAutoRefreshDBCredentialsDict(dict):
         return "DjangoAutoRefreshDBCredentialsDict(%s)" % super().__repr__()
 
 
-def refresh_credentials_hook(connection: BaseDatabaseWrapper) -> None:
+def refresh_credentials_hook(sender: type, *, connection: BaseDatabaseWrapper) -> None:
     # settings_dict will be the dictionary from the database connection
     # so this supports multiple databases in settings.py
     if isinstance(connection.settings_dict, DjangoAutoRefreshDBCredentialsDict):
@@ -284,5 +284,5 @@ class DjangoIntegration(AppConfig):
     name = "vault12factor"
 
     def ready(self) -> None:
-        import django_dbconn_retry
-        django_dbconn_retry.add_pre_reconnect_hook(refresh_credentials_hook)
+        from django_dbconn_retry import pre_reconnect
+        pre_reconnect.connect(refresh_credentials_hook)
