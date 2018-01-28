@@ -273,11 +273,11 @@ class DjangoAutoRefreshDBCredentialsDict(dict):
         return "DjangoAutoRefreshDBCredentialsDict(%s)" % super().__repr__()
 
 
-def refresh_credentials_hook(sender: type, *, connection: BaseDatabaseWrapper) -> None:
+def refresh_credentials_hook(sender: type, *, dbwrapper: BaseDatabaseWrapper, **kwargs: Any) -> None:
     # settings_dict will be the dictionary from the database connection
     # so this supports multiple databases in settings.py
-    if isinstance(connection.settings_dict, DjangoAutoRefreshDBCredentialsDict):
-        connection.settings_dict.refresh_credentials()
+    if isinstance(dbwrapper.settings_dict, DjangoAutoRefreshDBCredentialsDict):
+        dbwrapper.settings_dict.refresh_credentials()
 
 
 class DjangoIntegration(AppConfig):

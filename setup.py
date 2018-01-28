@@ -33,6 +33,6 @@ setup(
 
     install_requires=[
         "hvac>=0.3.0",  # require at least 0.3.0 because it supports approle authentication
-        "django_dbconn_retry",
+        "django_dbconn_retry>=0.1.4",  # require at least 0.1.4 for changed signal parameters
     ],
 )
