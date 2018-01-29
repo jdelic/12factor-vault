@@ -13,7 +13,7 @@ except IOError:
 
 setup(
     name="12factor-vault",
-    version="0.1.18",
+    version="0.1.19",
     packages=["vault12factor"],
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -33,6 +33,6 @@ setup(
 
     install_requires=[
         "hvac>=0.3.0",  # require at least 0.3.0 because it supports approle authentication
-        "django_dbconn_retry>=0.1.4",  # require at least 0.1.4 for changed signal parameters
+        "django_dbconn_retry>=0.1.5",  # require at least 0.1.5 for changed signal parameters
     ],
 )
