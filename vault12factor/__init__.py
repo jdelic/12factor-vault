@@ -59,7 +59,7 @@ class BaseVaultAuthenticator(VaultAuthentication):
     @classmethod
     def approle(cls: Type[T], role_id: str, secret_id: str=None, mountpoint: str="approle", use_token: bool=True) -> T:
         i = cls()
-        i.credentials(role_id, secret_id)
+        i.credentials = (role_id, secret_id)
         i.authmount = mountpoint
         i.authtype = "approle"
         i.use_token = use_token
