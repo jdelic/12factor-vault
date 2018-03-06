@@ -45,7 +45,6 @@ class BaseVaultAuthenticator(VaultAuthentication):
         self.credentials = None  # type: Union[str, Tuple[str, str]]
         self.authtype = None  # type: str
         self.authmount = None  # type: str
-        self.use_token = True
         self.unwrap_response = False
         super().__init__()
 
@@ -57,12 +56,11 @@ class BaseVaultAuthenticator(VaultAuthentication):
         return i
 
     @classmethod
-    def approle(cls: Type[T], role_id: str, secret_id: str=None, mountpoint: str="approle", use_token: bool=True) -> T:
+    def approle(cls: Type[T], role_id: str, secret_id: str=None, mountpoint: str="approle") -> T:
         i = cls()
         i.credentials = (role_id, secret_id)
         i.authmount = mountpoint
         i.authtype = "approle"
-        i.use_token = use_token
         return i
 
     @classmethod
@@ -93,7 +91,7 @@ class BaseVaultAuthenticator(VaultAuthentication):
             cl.auth_app_id(*self.credentials)
         elif self.authtype == "approle":
             cl = hvac.Client(*args, **kwargs)
-            cl.auth_approle(*self.credentials, mount_point=self.authmount, use_token=self.use_token)
+            cl.auth_approle(*self.credentials, mount_point=self.authmount)
         elif self.authtype == "ssl":
             cl = hvac.Client(cert=self.credentials, *args, **kwargs)
             cl.auth_tls()
