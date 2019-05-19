@@ -83,7 +83,7 @@ database credentials. When using PostgreSQL you will also want to look at
 .. code-block:: python
 
     # in settings.py
-    INSTALLED_APPS += ['django-dbconn-retry', 'vault12factor',]
+    INSTALLED_APPS += ['django_dbconn_retry', 'vault12factor',]
 
     from vault12factor import \
         VaultCredentialProvider, \
