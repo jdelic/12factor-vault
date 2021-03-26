@@ -89,14 +89,17 @@ class BaseVaultAuthenticator(VaultAuthentication):
         elif self.authtype == "app-id":
             cl = hvac.Client(*args, **kwargs)
             cl.auth_app_id(*self.credentials)
-        elif self.authtype == "approle":
-            cl = hvac.Client(*args, **kwargs)
-            cl.auth_approle(*self.credentials, mount_point=self.authmount)
         elif self.authtype == "ssl":
             cl = hvac.Client(cert=self.credentials, *args, **kwargs)
-            cl.auth_tls()
+            cl.auth.tls.login()
         else:
-            raise VaultCredentialProviderException("no auth config")
+            cl = hvac.Client(*args, **kwargs)
+            try:
+                auth_adapter = getattr(cl.auth, self.authtype)
+            except AttributeError:
+                raise VaultCredentialProviderException("unknown auth method %s" % self.authtype)
+
+            auth_adapter.login(*self.credentials, mount_point=self.authmount)
 
         if not cl.is_authenticated():
             raise VaultCredentialProviderException("Unable to authenticate Vault client using provided credentials "
