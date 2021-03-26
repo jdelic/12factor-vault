@@ -77,10 +77,35 @@ class BaseVaultAuthenticator(VaultAuthentication):
         return i
 
     @classmethod
-    def token(cls: Type[T], token: str) -> T:
+    def token(cls: Type[T], token: str, authtype: str = "token") -> T:
+        """
+        This method can be used to effect many authentication adapters, like
+        token authenticaation and GitHub
+        """
         i = cls()
         i.credentials = token
-        i.authtype = "token"
+        i.authtype = authtype
+        return i
+
+    @classmethod
+    def username_and_password(cls: Type[T], username: str, password: str, authtype: str = "ldap") -> T:
+        """
+        This method can be used for many authentication adapters, like okta, ldap, etc.
+        """
+        i = cls()
+        i.credentials = (username, password)
+        i.authtype = authtype
+        return i
+
+    @classmethod
+    def role_and_jwt(cls: Type[T], role: str, jwt: str, authtype: str = "jwt") -> T:
+        """
+        This method can be used to effect many authentication adapters, like
+        Kubernetes, Azure, GCP, and JWT/OIDC
+        """
+        i = cls()
+        i.credentials = (role, jwt)
+        i.authtype = authtype
         return i
 
     def authenticated_client(self, *args: Any, **kwargs: Any) -> hvac.Client:
