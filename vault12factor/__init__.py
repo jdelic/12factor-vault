@@ -219,17 +219,24 @@ class VaultCredentialProvider:
         }
     """
     def __init__(self, vaulturl: str, vaultauth: VaultAuthentication, secretpath: str, pin_cacert: str=None,
-                 ssl_verify: bool=False, debug_output: bool=False) -> None:
+                 ssl_verify: bool=False, debug_output: bool=False, attributes: list=["username", "password"]) -> None:
         self.vaulturl = vaulturl
         self._vaultauth = vaultauth
         self.secretpath = secretpath
         self.pin_cacert = pin_cacert
         self.ssl_verify = ssl_verify
         self.debug_output = debug_output
-        self._cache = None  # type: Dict[str, str]
+        self.attributes = attributes
+        self._cache = {}  # type: Dict[str, str]
         self._leasetime = None  # type: datetime.datetime
         self._updatetime = None  # type: datetime.datetime
         self._lease_id = None  # type: str
+
+    def _attach_secret_attribute(instance, attribute):
+        class_name = instance.__class__.__name__ + 'Child'
+        child_class = type(class_name, (instance.__class__,), {attribute: property(lambda self: self._get_or_update(attribute))})
+
+        instance.__class__ = child_class
 
     def _now(self) -> datetime.datetime:
         return datetime.datetime.now(pytz.timezone("UTC"))
@@ -248,40 +255,34 @@ class VaultCredentialProvider:
                 (self.secretpath, str(e))
             ) from e
 
-        if "data" not in result or "username" not in result["data"] or "password" not in result["data"]:
+        if "data" not in result:
             raise VaultCredentialProviderException(
-                "Read dict from Vault path %s did not match expected structure (data->{username, password}): %s" %
+                "Read dict from Vault path %s did not match expected structure: %s" %
                 (self.secretpath, str(result))
             )
 
+        for old_key in list(set(self._cache.keys()) - set(data.keys())):
+            delattr(self.__class__, old_key)
         self._cache = result["data"]
+        for attribute in result["data"].keys():
+          if not getattr(self, attribute, None):
+            self._attach_secret_attribute(attribute)
         self._lease_id = result["lease_id"]
         self._leasetime = self._now()
         self._updatetime = self._leasetime + datetime.timedelta(seconds=int(result["lease_duration"]))
 
-        _log.debug("Loaded new Vault DB credentials from %s:\nlease_id=%s\nleasetime=%s\nduration=%s\n"
-                   "username=%s\npassword=%s",
+        _log.debug("Loaded new Vault credentials from %s:\nlease_id=%s\nleasetime=%s\nduration=%s",
                    self.secretpath,
-                   self._lease_id, str(self._leasetime), result["lease_duration"], self._cache["username"],
-                   self._cache["password"] if self.debug_output else "Password withheld, debug output is disabled")
+                   self._lease_id, str(self._leasetime), result["lease_duration"])
 
     def _get_or_update(self, key: str) -> str:
         if self._cache is None or (self._updatetime - self._now()).total_seconds() < 10:
             # if we have less than 10 seconds in a lease ot no lease at all, we get new credentials
-            _log.info("Vault DB credential lease has expired, refreshing for %s" % key)
+            _log.info("Vault credential lease has expired, refreshing for %s" % key)
             self._refresh()
             _log.info("refresh done (%s, %s)" % (self._lease_id, str(self._updatetime)))
 
         return self._cache[key]
-
-    @property
-    def username(self) -> str:
-        return self._get_or_update("username")
-
-    @property
-    def password(self) -> str:
-        return self._get_or_update("password")
-
 
 class DjangoAutoRefreshDBCredentialsDict(dict):
     def __init__(self, provider: VaultCredentialProvider, *args: Any, **kwargs: Any) -> None:
