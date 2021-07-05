@@ -219,14 +219,13 @@ class VaultCredentialProvider:
         }
     """
     def __init__(self, vaulturl: str, vaultauth: VaultAuthentication, secretpath: str, pin_cacert: str=None,
-                 ssl_verify: bool=False, debug_output: bool=False, attributes: list=["username", "password"]) -> None:
+                 ssl_verify: bool=False, debug_output: bool=False) -> None:
         self.vaulturl = vaulturl
         self._vaultauth = vaultauth
         self.secretpath = secretpath
         self.pin_cacert = pin_cacert
         self.ssl_verify = ssl_verify
         self.debug_output = debug_output
-        self.attributes = attributes
         self._cache = {}  # type: Dict[str, str]
         self._leasetime = None  # type: datetime.datetime
         self._updatetime = None  # type: datetime.datetime
@@ -271,7 +270,7 @@ class VaultCredentialProvider:
                 "Read dict from Vault path %s did not match expected structure: %s" %
                 (self.secretpath, str(result))
             )
-globals()
+
         # Before updating the cache, check for vault keys that have been removed and remove the property
         for old_key in list(set(self._cache.keys()) - set(result["data"].keys())):
             delattr(self.__class__, old_key)
