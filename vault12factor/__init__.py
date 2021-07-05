@@ -231,6 +231,7 @@ class VaultCredentialProvider:
         self._leasetime = None  # type: datetime.datetime
         self._updatetime = None  # type: datetime.datetime
         self._lease_id = None  # type: str
+        self._refresh()
 
     def _attach_secret_attribute(instance, attribute):
         class_name = instance.__class__.__name__ + 'Child'
