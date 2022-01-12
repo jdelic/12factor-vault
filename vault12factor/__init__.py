@@ -5,7 +5,6 @@ import os
 from typing import Dict, Tuple, Union, Any, TypeVar, Type
 
 import hvac
-import pytz
 from django.apps.config import AppConfig
 from django.db.backends.base.base import BaseDatabaseWrapper
 from requests.exceptions import RequestException
@@ -232,7 +231,7 @@ class VaultCredentialProvider:
         self._lease_id = None  # type: str
 
     def _now(self) -> datetime.datetime:
-        return datetime.datetime.now(pytz.timezone("UTC"))
+        return datetime.datetime.now()
 
     def _refresh(self) -> None:
         vcl = self._vaultauth.authenticated_client(
