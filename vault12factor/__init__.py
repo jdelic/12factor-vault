@@ -225,10 +225,17 @@ class VaultCredentialProvider:
         self.pin_cacert = pin_cacert
         self.ssl_verify = ssl_verify
         self.debug_output = debug_output
-        self._cache = None  # type: Dict[str, str]
+        self._cache = {}  # type: Dict[str, str]
         self._leasetime = None  # type: datetime.datetime
         self._updatetime = None  # type: datetime.datetime
         self._lease_id = None  # type: str
+        self._refresh()
+
+    def _attach_secret_attribute(instance, attribute):
+        class_name = instance.__class__.__name__ + 'Child'
+        child_class = type(class_name, (instance.__class__,), {attribute: property(lambda self: self._get_or_update(attribute))})
+
+        instance.__class__ = child_class
 
     def _now(self) -> datetime.datetime:
         return datetime.datetime.now()
@@ -247,40 +254,58 @@ class VaultCredentialProvider:
                 (self.secretpath, str(e))
             ) from e
 
-        if "data" not in result or "username" not in result["data"] or "password" not in result["data"]:
+        if not result:
+            try:
+                mountpoint, path = self.secretpath.split('/', 1)
+                result = vcl.secrets.kv.v2.read_secret_version(mount_point=mountpoint,path=path)
+            except RequestException as e:
+                raise VaultCredentialProviderException(
+                    "Unable to read credentials from path '%s' with request error: %s" %
+                    (self.secretpath, str(e))
+                ) from e
+
+        if "data" not in result:
             raise VaultCredentialProviderException(
-                "Read dict from Vault path %s did not match expected structure (data->{username, password}): %s" %
+                "Read dict from Vault path %s did not match expected structure: %s" %
                 (self.secretpath, str(result))
             )
 
-        self._cache = result["data"]
-        self._lease_id = result["lease_id"]
-        self._leasetime = self._now()
-        self._updatetime = self._leasetime + datetime.timedelta(seconds=int(result["lease_duration"]))
+        # Before updating the cache, check for vault keys that have been removed and remove the property
+        for old_key in list(set(self._cache.keys()) - set(result["data"].keys())):
+            delattr(self.__class__, old_key)
 
-        _log.debug("Loaded new Vault DB credentials from %s:\nlease_id=%s\nleasetime=%s\nduration=%s\n"
-                   "username=%s\npassword=%s",
+        # Normalize secret data between kv engines and everything else
+        if "data" in result["data"]:
+            secret = result["data"]["data"]
+        else:
+            secret = result["data"]
+
+        self._cache = secret
+
+        # Add any keys in the to our object as a property
+        for attribute in secret.keys():
+          if not getattr(self, attribute, None):
+            self._attach_secret_attribute(attribute)
+
+        self._lease_id = secret.get("lease_id")
+        self._leasetime = self._now()
+        self._updatetime = self._leasetime + datetime.timedelta(
+            seconds=int(secret.get("lease_duration", os.getenv("VAULT_DEFAULT_CACHE_DURATION", "3600"))))
+
+        _log.debug("Loaded new Vault credentials from %s:\nlease_id=%s\nleasetime=%s\nduration=%s",
                    self.secretpath,
-                   self._lease_id, str(self._leasetime), result["lease_duration"], self._cache["username"],
-                   self._cache["password"] if self.debug_output else "Password withheld, debug output is disabled")
+                   self._lease_id,
+                   str(self._leasetime),
+                   secret.get("lease_duration", os.getenv("VAULT_DEFAULT_CACHE_DURATION", "3600")))
 
     def _get_or_update(self, key: str) -> str:
         if self._cache is None or (self._updatetime - self._now()).total_seconds() < 10:
             # if we have less than 10 seconds in a lease ot no lease at all, we get new credentials
-            _log.info("Vault DB credential lease has expired, refreshing for %s" % key)
+            _log.info("Vault credential lease has expired, refreshing for %s" % key)
             self._refresh()
             _log.info("refresh done (%s, %s)" % (self._lease_id, str(self._updatetime)))
 
         return self._cache[key]
-
-    @property
-    def username(self) -> str:
-        return self._get_or_update("username")
-
-    @property
-    def password(self) -> str:
-        return self._get_or_update("password")
-
 
 class DjangoAutoRefreshDBCredentialsDict(dict):
     def __init__(self, provider: VaultCredentialProvider, *args: Any, **kwargs: Any) -> None:
