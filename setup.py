@@ -13,7 +13,7 @@ except IOError:
 
 setup(
     name="12factor-vault",
-    version="0.1.22",
+    version="0.1.23",
     packages=["vault12factor"],
     classifiers=[
         "Development Status :: 4 - Beta",
