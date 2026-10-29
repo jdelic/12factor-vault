@@ -279,15 +279,39 @@ class VaultCredentialProvider:
     def password(self) -> str:
         return self._get_or_update("password")
 
+    @property
+    def credentials(self) -> Tuple[str, str]:
+        """
+        :return: ``(username, password)`` from the same lease, so a refresh can't happen between reading them
+        """
+        self._get_or_update("username")
+        return self._cache["username"], self._cache["password"]
+
 
 class DjangoAutoRefreshDBCredentialsDict(dict):
     def __init__(self, provider: VaultCredentialProvider, *args: Any, **kwargs: Any) -> None:
         self._provider = provider
         super().__init__(*args, **kwargs)
 
+    def _current_credential(self, key: str) -> str:
+        # Always ask the provider, which renews the credentials when their lease is about to expire. This way every
+        # new database connection gets valid credentials even if no pre_reconnect hook ran before it, which is the
+        # case once django-dbconn-retry has exhausted its retries and fails fast.
+        self.refresh_credentials()
+        return super().__getitem__(key)
+
+    def __getitem__(self, key: str) -> Any:
+        if key in ("USER", "PASSWORD"):
+            return self._current_credential(key)
+        return super().__getitem__(key)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        if key in ("USER", "PASSWORD"):
+            return self._current_credential(key)
+        return super().get(key, default)
+
     def refresh_credentials(self) -> None:
-        self["USER"] = self._provider.username
-        self["PASSWORD"] = self._provider.password
+        self["USER"], self["PASSWORD"] = self._provider.credentials
 
     def __str__(self) -> str:
         return "DjangoAutoRefreshDBCredentialsDict(%s)" % super().__str__()
