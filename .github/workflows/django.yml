@@ -1,0 +1,64 @@
+name: Django CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: ["3.13", "3.14"]
+    env:
+      VAULT_ADDR: "http://127.0.0.1:8200"
+      # Only used to configure Vault and in the tests. It's not called VAULT_TOKEN, because the test project
+      # must authenticate using AppRole.
+      VAULT_ROOT_TOKEN: "root"
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-test.txt -e .
+    - name: Start PostgreSQL
+      run: |
+        sudo systemctl start postgresql.service
+        pg_isready
+    - name: Set up PostgreSQL
+      run: |
+        sudo -u postgres psql -v ON_ERROR_STOP=1 < .ci/postgresql_setup.sql
+    - name: Install Vault
+      run: |
+        wget -O - https://apt.releases.hashicorp.com/gpg | \
+            sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
+            sudo tee /etc/apt/sources.list.d/hashicorp.list
+        sudo apt-get update
+        sudo apt-get install -y vault
+        vault version
+    - name: Start Vault
+      run: |
+        nohup vault server -dev -dev-root-token-id="$VAULT_ROOT_TOKEN" -dev-listen-address=127.0.0.1:8200 \
+            > "$RUNNER_TEMP/vault.log" 2>&1 &
+        for i in $(seq 30); do
+            vault status > /dev/null 2>&1 && break
+            sleep 1
+        done
+        vault status
+    - name: Configure Vault
+      run: .ci/configure_vault.sh
+    - name: Run Tests
+      working-directory: test_project
+      run: python manage.py test -v 2
+    - name: Show Vault log
+      if: ${{ failure() }}
+      run: cat "$RUNNER_TEMP/vault.log"
