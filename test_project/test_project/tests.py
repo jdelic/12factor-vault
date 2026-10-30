@@ -5,6 +5,7 @@ import hvac
 from django.conf import settings
 from django.db import connection
 from django.test import SimpleTestCase
+from django_dbconn_retry import pre_reconnect
 
 
 class VaultDatabaseConnectionTests(SimpleTestCase):
@@ -45,3 +46,26 @@ class VaultDatabaseConnectionTests(SimpleTestCase):
         self.assertNotEqual(new_user, old_user)
         self.assertEqual(new_user, settings.CREDS.username)
         self.assertFalse(self.role_exists(old_user))
+
+    def test_connects_without_retry_after_lease_expired(self) -> None:
+        old_user = self.whoami()["session_user"]
+        connection.close()
+
+        root = hvac.Client(url=settings.VAULT_ADDRESS, token=os.environ["VAULT_ROOT_TOKEN"])
+        root.sys.revoke_lease(settings.CREDS._lease_id)
+        settings.CREDS._updatetime = settings.CREDS._now()
+
+        # django-dbconn-retry only sends pre_reconnect after a connection attempt failed
+        failed_attempts = []
+
+        def count_failed_attempts(sender: type, **kwargs: Any) -> None:
+            failed_attempts.append(sender)
+
+        pre_reconnect.connect(count_failed_attempts)
+        try:
+            new_user = self.whoami()["session_user"]
+        finally:
+            pre_reconnect.disconnect(count_failed_attempts)
+
+        self.assertNotEqual(new_user, old_user)
+        self.assertEqual(failed_attempts, [])

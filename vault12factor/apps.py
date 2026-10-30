@@ -294,9 +294,9 @@ class DjangoAutoRefreshDBCredentialsDict(dict):
         super().__init__(*args, **kwargs)
 
     def _current_credential(self, key: str) -> str:
-        # Always ask the provider, which renews the credentials when their lease is about to expire. This way every
-        # new database connection gets valid credentials even if no pre_reconnect hook ran before it, which is the
-        # case once django-dbconn-retry has exhausted its retries and fails fast.
+        # Always ask the provider, which only contacts Vault when the lease is about to expire or already has. This way
+        # a new database connection uses valid credentials right away, instead of first failing with expired ones and
+        # relying on django-dbconn-retry's pre_reconnect hook to refresh them for the retry.
         self.refresh_credentials()
         return super().__getitem__(key)
 
