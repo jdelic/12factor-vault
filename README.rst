@@ -123,6 +123,28 @@ database credentials. When using PostgreSQL you will also want to look at
         }
 
 
+Running the tests
+-----------------
+The tests in ``test_project`` connect a Django project to PostgreSQL through
+Vault, configured like the example above, and use the Django test client. They
+need a PostgreSQL server and a Vault server. The GitHub Actions workflow in
+``.github/workflows/django.yml`` sets both up. To run the tests locally,
+start a Vault dev server and run, as a PostgreSQL superuser, the SQL in
+``.ci/postgresql_setup.sql``. Then:
+
+.. code-block:: shell
+
+    pip install -r requirements-test.txt -e .
+    export VAULT_ADDR=http://127.0.0.1:8200 VAULT_ROOT_TOKEN=<root token>
+    eval "$(.ci/configure_vault.sh)"
+    cd test_project
+    python manage.py test
+
+``.ci/configure_vault.sh`` and the tests use ``DATABASE_HOST`` and
+``DATABASE_PORT`` (default ``127.0.0.1:5432``) to find PostgreSQL. Don't set
+``VAULT_TOKEN``, because the test project must authenticate using AppRole.
+
+
 License
 =======
 
